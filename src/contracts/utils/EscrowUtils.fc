@@ -1,0 +1,51 @@
+;; imports
+#include "../imports/stdlib.fc";
+
+cell pack_child_escrow_data(
+cell contract_details,
+slice employer_address,
+slice implementer_address,
+slice escrow_master,
+cell token_wallet_code,
+int state_contract) inline {
+    return begin_cell()
+        .store_ref(contract_details)
+        .store_slice(employer_address)
+        .store_slice(implementer_address)
+        .store_slice(escrow_master)
+        .store_ref(token_wallet_code)
+        .store_uint(state_contract, 8)
+        .end_cell();
+}
+
+
+
+cell calculate_child_escrow_state_init(slice owner, slice implementer_address, slice jetton_master, cell code) inline {
+
+    cell contract_details = begin_cell().store_uint(12, 32).end_cell();
+
+    return begin_cell()
+        .store_uint(0, 1 + 1) ;; split_depth (Maybe = 0) and special (Maybe = 0)
+        .store_maybe_ref(code)
+        .store_maybe_ref(pack_child_escrow_data(
+            contract_details,
+            owner, implementer_address,
+            jetton_master, code,
+            0))
+        .store_uint(0, 1) ;; libraries - empty cell
+        .end_cell();
+}
+
+slice calc_address(cell state_init) inline {
+    return begin_cell().store_uint(4, 3) ;; 0x100 : $10 + anycast (Maybe = 0)
+        .store_int(0, 8)
+        .store_uint(
+            cell_hash(state_init), 256)
+        .end_cell()
+        .begin_parse();
+}
+
+;; calc_user_wallet
+(slice) calc_user_pass_child(slice owner, slice implementer_address, slice jetton_master, cell code) inline {
+    return calc_address(calculate_child_escrow_state_init(owner, implementer_address, jetton_master, code));
+}
