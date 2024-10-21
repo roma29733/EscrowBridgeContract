@@ -42,16 +42,16 @@ export class MasterEscrowContract implements Contract {
         });
     }
 
-    static mintMessage(to: Address, implementer_address: Address, contract_details: Cell, total_ton_amount: bigint,) {
+    static mintMessage( implementer_address: Address, contract_details: Cell, total_ton_amount: bigint,) {
         return beginCell().storeUint(0x1674b0a0, 32).storeUint(0, 64) // op, queryId
-            .storeAddress(to).storeAddress(implementer_address).storeRef(contract_details).storeCoins(total_ton_amount)
+            .storeAddress(implementer_address).storeRef(contract_details).storeCoins(total_ton_amount)
             .endCell();
     }
 
-    async sendMint(provider: ContractProvider, via: Sender, to: Address, implementer_address: Address, contract_details: Cell, total_ton_amount: bigint) {
+    async sendMint(provider: ContractProvider, via: Sender,  implementer_address: Address, contract_details: Cell, total_ton_amount: bigint) {
         await provider.internal(via, {
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: MasterEscrowContract.mintMessage(to, implementer_address, contract_details, total_ton_amount),
+            body: MasterEscrowContract.mintMessage(implementer_address, contract_details, total_ton_amount),
             value: total_ton_amount + toNano("0.1"),
         });
     }

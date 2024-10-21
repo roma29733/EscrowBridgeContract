@@ -63,8 +63,7 @@
         return ();
     }
 
-
-    if(op:toNextStep) {
+    if(op == op::toNextStep) {
         (cell contract_details, slice employer_address, slice implementer_address, slice escrow_master, cell jetton_wallet_code, int state_contract) = load_data();
 
         if(state_contract == 0) {
@@ -94,7 +93,29 @@
         return ();
     }
 
-    if(op:sendToRevision){
+    if(op == op::cancelEscrow) {
+        (cell contract_details, slice employer_address, slice implementer_address, slice escrow_master, cell jetton_wallet_code, int state_contract) = load_data();
+
+
+        if(state_contract == 0) {
+            throw_unless(error::unauthorized_change_admin_request, equal_slice_bits(sender_address, employer_address));
+            save_data(contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 2);
+            int coins = get_balance().pair_first();
+            cell newMsg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(sender_address)
+                .store_coins(coins)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .end_cell();
+            send_raw_message(newMsg, 128);
+            return ();
+        }
+
+        return ();
+    }
+
+
+    if(op == op::sendToRevision){
         (cell contract_details, slice employer_address, slice implementer_address, slice escrow_master, cell jetton_wallet_code, int state_contract) = load_data();
 
         if(state_contract == 4) {
@@ -110,4 +131,9 @@
 ;; methods for get data for it contract
 (cell, slice, slice, slice, cell, int) get_contract_data() method_id {
     return load_data();
+}
+
+int get_balance_contract() method_id {
+    int balance = get_balance().pair_first();
+    return balance;
 }

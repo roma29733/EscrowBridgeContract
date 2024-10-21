@@ -31,7 +31,7 @@
     slice to_pass_child_address = calc_address(state_init);
 
     var newMsg = begin_cell()
-        .store_msg_flag(msg_flag::bounceable)
+        .store_msg_flag(msg_flag::non_bounceable)
         .store_slice(to_pass_child_address)
         .store_coins(amount)
         .store_msgbody_prefix_stateinit(state_init, master_msg);
@@ -53,7 +53,7 @@
         return ();
     }
 
-    ;; slice sender_address = cs~load_msg_addr();
+    slice sender_address = cs~load_msg_addr();
     (slice admin_address, cell escrow_code) = load_data();
     int op = in_msg_body~load_op();
     int query_id = in_msg_body~load_query_id();
@@ -62,7 +62,7 @@
     if (op == op::mint) {
         slice implementer_address = in_msg_body~load_msg_addr();
         cell contract_details = in_msg_body~load_ref();
-        slice to_address = in_msg_body~load_msg_addr();
+        ;; slice to_address = in_msg_body~load_msg_addr();
         ;; throw_unless(error::unauthorized_mint_request, equal_slice_bits(sender_address, to_address));
 
         cell mint_request = begin_cell()
@@ -74,7 +74,7 @@
             .store_uint(0, 1) ;; no forward_payload, 1 bit
             .end_cell();
 
-        mintChildEscrow(to_address, implementer_address, escrow_code, msg_value,mint_request);
+        mintChildEscrow(sender_address, implementer_address, escrow_code, msg_value,mint_request);
         save_data(admin_address, escrow_code);
         return ();
     }

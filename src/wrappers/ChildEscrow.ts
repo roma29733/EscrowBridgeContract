@@ -12,20 +12,6 @@ export class ChildEscrow implements Contract {
     }
 
 
-    async sendChangeItemTitle(
-        provider: ContractProvider,
-        sender: Sender,
-        value: bigint,
-        newTitle: Cell
-    ) {
-
-        await provider.internal(sender, {
-            value,
-            sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(0x5773d1f5, 32).storeUint(0, 64).storeRef(newTitle).endCell()
-        })
-    }
-
     async send_to_next_step(
         provider: ContractProvider,
         sender: Sender,
@@ -39,18 +25,17 @@ export class ChildEscrow implements Contract {
     }
 
 
-    // async sendToRevision(
-    //     provider: ContractProvider,
-    //     sender: Sender,
-    //     value: bigint,
-    // ) {
-    //     await provider.internal(sender, {
-    //         value,
-    //         sendMode: SendMode.PAY_GAS_SEPARATELY,
-    //         body: beginCell().storeUint(0x13423f, 32).storeUint(0, 64).endCell()
-    //     })
-    // }
-
+    async send_to_cancel_escrow(
+        provider: ContractProvider,
+        sender: Sender,
+        value: bigint,
+    ){
+        await provider.internal(sender, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(0x1432f, 32).storeUint(0, 64).endCell()
+        })
+    }
 
     async get_state_of_contract(provider: ContractProvider) {
         const res = await provider.get("get_contract_data", [])
@@ -60,5 +45,10 @@ export class ChildEscrow implements Contract {
     async get_contract_data(provider: ContractProvider) {
         const res = await provider.get("get_contract_data", [])
         return res.stack
+    }
+
+    async getBalance(provider: ContractProvider) {
+        const res = await provider.get("get_balance_contract", [])
+        return res.stack.readNumber()
     }
 }
