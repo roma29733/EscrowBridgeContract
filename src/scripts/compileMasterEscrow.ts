@@ -7,7 +7,7 @@ import { compileFunc } from "@ton-community/func-js";
 async function compileScript() {
 
     const compileResult = await compileFunc({
-        targets: ["./src/contracts/MasterEscrow.fc"],
+        targets: ["./src/contracts/master_escrow.fc"],
         sources: (path) => readFileSync(path).toString("utf8"),
     });
 

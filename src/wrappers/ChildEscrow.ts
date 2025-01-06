@@ -20,7 +20,19 @@ export class ChildEscrow implements Contract {
         await provider.internal(sender, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(0x12345f, 32).storeUint(0, 64).endCell()
+            body: beginCell().storeUint(32, 32).storeUint(0, 64).endCell()
+        })
+    }
+
+    async send_to_submit_project(
+        provider: ContractProvider,
+        sender: Sender,
+        value: bigint,
+    ) {
+        await provider.internal(sender, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(1234, 32).storeUint(0, 64).endCell()
         })
     }
 
@@ -33,13 +45,26 @@ export class ChildEscrow implements Contract {
         await provider.internal(sender, {
             value,
             sendMode: SendMode.PAY_GAS_SEPARATELY,
-            body: beginCell().storeUint(0x1432f, 32).storeUint(0, 64).endCell()
+            body: beginCell().storeUint(3, 32).storeUint(0, 64).endCell()
+        })
+    }
+
+
+    async send_to_requires_admins_intervention(
+        provider: ContractProvider,
+        sender: Sender,
+        value: bigint,
+    ){
+        await provider.internal(sender, {
+            value,
+            sendMode: SendMode.PAY_GAS_SEPARATELY,
+            body: beginCell().storeUint(4, 32).storeUint(0, 64).endCell()
         })
     }
 
     async get_state_of_contract(provider: ContractProvider) {
         const res = await provider.get("get_contract_data", [])
-        return res.stack.skip(5).readBigNumber()
+        return res.stack.skip(6).readBigNumber()
     }
 
     async get_contract_data(provider: ContractProvider) {

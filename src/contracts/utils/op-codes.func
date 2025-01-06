@@ -13,15 +13,23 @@ const int op::provide_wallet_address = 0x2c76b973;
 const int op::take_wallet_address = 0xd1735400;
 
 ;; Minter
-const int op::mint = 0x1674b0a0;
-const int op::change_admin = 0x4840664f;
-const int op::change_cod = 0x5773d1f5;
-const int op::toNextStep = 0x12345f;
-const int op::sendToRevision = 0x13423f;
-const int op::cancelEscrow = 0x1432f;
+const int op::mint = 0;
+const int op::change_admin = 11;
+const int op::change_cod = 12;
+const int op::change_cod_master = 21;
+const int op::sendMessages = 31;
+const int op::toNextStep = 32;
+const int op::submitProject = 1234;
+const int op::sendToRevision = 1342;
+const int op::successfullyCompleteProject = 221;
+const int op::revisionAdopted = 15;
+const int op::cancelEscrow = 3;
+const int op::requiresAdminsIntervention = 4;
+const int op::adminsReturnProjectToWork = 41;
+const int op::adminsDeclaredDealFail = 42;
 
-(slice, (int)) ~load_op(slice s) inline { return s.load_uint(32); }
-(slice, (int)) ~load_query_id(slice s) inline { return s.load_uint(64); }
-builder store_op(builder b, int op) inline { return b.store_uint(op, 32); }
-builder store_query_id(builder b, int query_id) inline { return b.store_uint(query_id, 64); }
-
+;; (slice, (int)) ~load_op(slice s) inline { return s.load_uint(32); }
+;; (slice, (int)) ~load_query_id(slice s) inline { return s.load_uint(64); }
+;; builder store_op(builder b, int op) inline { return b.store_uint(op, 32); }
+;; builder store_query_id(builder b, int query_id) inline { return b.store_uint(query_id, 64); }
+;;

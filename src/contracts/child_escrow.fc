@@ -1,0 +1,209 @@
+;; imports
+#include "./imports/stdlib.fc";
+#include "./utils/EscrowUtils.fc";
+#include "./utils/op-codes.func";
+#include "./utils/error-codes.func";
+
+;; State contract this int describes state,
+;; - 0 describes the state, primary, the implementer has not confirmed participation
+;; - 1 The project has started
+;; - 4 the project has been submitted for verification
+;; - 5 the project has been successfully accepted, the project is over
+;; - 6 there was a revision
+;; - 7 revision in the work
+;; - 8 a controversial point, requires the intervention of the administrator
+;; - 9 administrator returned project to work
+;; - 3 administrator declared the deal is failed
+;; - 2 the deal failed
+
+(int, cell, slice, slice, slice, cell, int) load_data() inline {
+    slice ds = get_data().begin_parse();
+    return (
+        ds~load_int(8),
+        ds~load_ref(),
+        ds~load_msg_addr(),
+        ds~load_msg_addr(),
+        ds~load_msg_addr(),
+        ds~load_ref(),
+        ds~load_uint(8));
+}
+
+() save_data(int version_code, cell contract_details, slice employer_address, slice implementer_address, slice escrow_master, cell master_code, int state_contract) impure inline {
+    set_data(
+        pack_child_escrow_data(
+            version_code,
+            contract_details,
+            employer_address,
+            implementer_address,
+            escrow_master,
+            master_code, state_contract)
+    );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        ;; ignore empty messages
+        return ();
+    }
+
+    ;; get flags
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+
+    slice sender_address = cs~load_msg_addr();
+
+    int op = in_msg_body~load_op();
+    ;; load data from work here
+    (int version_code,  cell contract_details, slice employer_address, slice implementer_address, slice escrow_master, cell jetton_wallet_code, int state_contract) = load_data();
+
+
+
+    if (op == op::change_cod) {
+        throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, escrow_master));
+        cell newCode = in_msg_body~load_ref();
+        if(newCode.begin_parse().slice_empty?()) {
+            return ();
+        }
+        set_code(newCode);
+        return ();
+    }
+
+    ;; setup state contract to work state
+    if (op == op::toNextStep) {
+        if (state_contract == 0) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, implementer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 1);
+            return ();
+        }
+        return ();
+    }
+
+    ;; setup state contract to success and ending
+    if (op == op::successfullyCompleteProject) {
+        if (state_contract == 4) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, employer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 5);
+            return ();
+        }
+    }
+
+    ;; setup state contract to employer completed and send to revision
+    if (op == op::submitProject) {
+        if (state_contract == 1) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, implementer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 4);
+            return ();
+        }
+
+        if (state_contract == 7) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, implementer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 4);
+            return ();
+        }
+        return ();
+    }
+
+    ;; implimenter has send to improvements this project
+    if (op == op::sendToRevision) {
+        if (state_contract == 4) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, employer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 6);
+        }
+
+        return ();
+    }
+
+    if (op == op::revisionAdopted) {
+        if (state_contract == 6) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, implementer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 7);
+        }
+
+        return ();
+    }
+
+
+    ;; employer cancel this contract
+    if (op == op::cancelEscrow) {
+
+        if (state_contract == 0) {
+            throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, employer_address));
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 2);
+            int coins = get_balance().pair_first();
+            cell newMsg = begin_cell()
+                .store_uint(0x18, 6)
+                .store_slice(sender_address)
+                .store_coins(coins)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .end_cell();
+            send_raw_message(newMsg, 128);
+            return ();
+        }
+
+        return ();
+    }
+
+    ;; admins work
+
+
+    if (op == op::requiresAdminsIntervention) {
+        ;; skip dont work states
+        if(state_contract == 0) {
+            return ();
+        }
+        if(state_contract == 2) {
+            return ();
+        }
+        if(state_contract == 8) {
+            return ();
+        }
+        if(state_contract == 9) {
+            return ();
+        }
+        if(state_contract == 3) {
+            return ();
+        }
+        ;; save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 8);
+        if(equal_slices_bits(sender_address, employer_address)) {
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 8);
+            return ();
+        }
+        if(equal_slices_bits(sender_address , implementer_address)) {
+            save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 8);
+            return ();
+        }
+
+        throw(error::unauthorized_change_content_request);
+        return ();
+    }
+
+
+
+    if(op == op::adminsReturnProjectToWork) {
+        throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, escrow_master));
+
+        save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 9);
+        return ();
+    }
+
+    if(op == op::adminsDeclaredDealFail) {
+        throw_unless(error::unauthorized_change_content_request, equal_slices_bits(sender_address, escrow_master));
+
+        save_data(version_code, contract_details, employer_address, implementer_address, escrow_master, jetton_wallet_code, 3);
+        return ();
+    }
+
+}
+;; methods for get data for it contract
+(int, cell, slice, slice, slice, cell, int) get_contract_data() method_id {
+    return load_data();
+}
+
+int get_balance_contract() method_id {
+    int balance = get_balance().pair_first();
+    return balance;
+}
